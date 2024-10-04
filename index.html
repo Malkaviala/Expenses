@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Car Expenses</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-firestore-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-storage-compat.min.js"></script>
+    <script src="firebase.js"></script>
+
+    <style>
+        :root {
+            --system-blue: #007AFF;
+            --system-red: #FF3B30;
+            --system-gray: #8E8E93;
+            --system-gray2: #AEAEB2;
+            --system-gray5: #E5E5EA;
+            --system-gray6: #F2F2F7;
+            --system-background: #F2F2F7;
+            --grouped-background: #FFFFFF;
+            --text-primary: #000000;
+            --text-secondary: #6C6C70;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --system-background: #000000;
+                --grouped-background: #1C1C1E;
+                --text-primary: #FFFFFF;
+                --text-secondary: #98989F;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Icons', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--system-background);
+            color: var(--text-primary);
+            line-height: 1.3;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .navigation-bar {
+            position: sticky;
+            top: 0;
+            background-color: var(--grouped-background);
+            padding: 12px 16px;
+            border-bottom: 0.5px solid var(--system-gray5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .navigation-title {
+            font-size: 17px;
+            font-weight: 600;
+            text-align: center;
+            color: var(--text-primary);
+        }
+
+        .back-button {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--system-blue);
+            text-decoration: none;
+            font-size: 17px;
+        }
+
+        .filter-section {
+            margin: 20px 16px;
+            background-color: var(--grouped-background);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .filter-row {
+            padding: 12px 16px;
+            border-bottom: 0.5px solid var(--system-gray5);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .filter-row:last-child {
+            border-bottom: none;
+        }
+
+        .filter-label {
+            color: var(--text-primary);
+            font-size: 17px;
+        }
+
+        input, select {
+            border: none;
+            background: none;
+            color: var(--system-blue);
+            font-size: 17px;
+            padding: 0;
+            text-align: right;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text';
+            width: 50%;
+        }
+
+        select {
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%238E8E93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right center;
+            padding-right: 20px;
+        }
+
+        .total-expenses {
+            padding: 16px;
+            text-align: right;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--text-secondary);
+            background-color: var(--grouped-background);
+            margin: 0 16px;
+            border-radius: 10px;
+        }
+
+        .expense-list {
+            margin: 20px 16px;
+            background-color: var(--grouped-background);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .expense-item {
+            padding: 16px;
+            border-bottom: 0.5px solid var(--system-gray5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .expense-details {
+            flex: 1;
+        }
+
+        .expense-date {
+            font-size: 15px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .expense-description {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .expense-price {
+            font-size: 20px;
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-left: 16px;
+        }
+
+        .delete-btn {
+            color: var(--system-red);
+            background: none;
+            border: none;
+            font-size: 14px;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+
+        .view-btn {
+            color: var(--system-blue);
+            background: none;
+            border: none;
+            font-size: 14px;
+            padding: 2px 10px;
+            cursor: pointer;
+            margin-left: 20px;
+        }
+
+        @media (hover: hover) {
+            .delete-btn:hover {
+                opacity: 0.7;
+            }
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="navigation-bar">
+        <a href="expenses_view.html" class="back-button">Add New</a>
+        <div class="navigation-title">Car Expenses</div>
+    </div>
+
+    <div class="filter-section">
+        <div class="filter-row">
+            <span class="filter-label">Start Date</span>
+            <input type="date" id="startDate">
+        </div>
+        <div class="filter-row">
+            <span class="filter-label">End Date</span>
+            <input type="date" id="endDate">
+        </div>
+        <div class="filter-row">
+            <span class="filter-label">Part Number</span>
+            <input type="text" id="partNumberFilter" placeholder="Enter part number">
+        </div>
+        <div class="filter-row">
+            <span class="filter-label">Sort By</span>
+            <select id="sortBy">
+                <option value="date-desc">Date (Newest)</option>
+                <option value="date-asc">Date (Oldest)</option>
+                <option value="price-desc">Price (Highest)</option>
+                <option value="price-asc">Price (Lowest)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="total-expenses" id="totalExpenses">
+        Total Expenses: $0.00
+    </div>
+
+    <div class="expense-list" id="expenseList">
+        <!-- Expenses will be dynamically added here -->
+    </div>
+
+    <script>
+        const db = firebase.firestore();
+        const expenseList = document.getElementById('expenseList');
+        const totalExpensesElement = document.getElementById('totalExpenses');
+
+        function loadExpenses() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const partNumberFilter = document.getElementById('partNumberFilter').value;
+            const sortBy = document.getElementById('sortBy').value;
+            
+            let query = db.collection('expenses');
+
+            if (startDate) {
+                query = query.where('date', '>=', new Date(startDate));
+            }
+            if (endDate) {
+                query = query.where('date', '<=', new Date(endDate));
+            }
+            if (partNumberFilter) {
+                query = query.where('partNumber', '==', partNumberFilter);
+            }
+
+            switch(sortBy) {
+                case 'date-desc':
+                    query = query.orderBy('date', 'desc');
+                    break;
+                case 'date-asc':
+                    query = query.orderBy('date', 'asc');
+                    break;
+                case 'price-desc':
+                    query = query.orderBy('price', 'desc');
+                    break;
+                case 'price-asc':
+                    query = query.orderBy('price', 'asc');
+                    break;
+            }
+
+            query.get().then(snapshot => {
+                let total = 0;
+                expenseList.innerHTML = '';
+                snapshot.forEach(doc => {
+    const expense = doc.data();
+    total += expense.price;
+
+    // Parse the string date into a Date object
+    const expenseDate = new Date(expense.date);
+
+    const expenseElement = document.createElement('div');
+    expenseElement.classList.add('expense-item');
+    expenseElement.innerHTML = `
+        <div class="expense-details">
+            <div class="expense-date">${expenseDate.toLocaleDateString()}</div>
+            <div class="expense-description">${expense.partNumber} - ${expense.description}</div>
+            <div class="expense-note">${expense.note || ''}</div>
+
+        </div>
+        <div class="expense-price">$${expense.price.toFixed(2)}</div>
+        <button class="view-btn" onclick="window.open('${expense.attachments[0] || '#'}', '_blank')">View PDF</button>
+        <button class="delete-btn" onclick="deleteExpense('${doc.id}')">Delete</button>
+    `;
+    expenseList.appendChild(expenseElement);
+});
+
+                totalExpensesElement.textContent = `Total Expenses: $${total.toFixed(2)}`;
+            });
+        }
+
+        function viewExpense(expenseId) {
+            // Fetch the expense document
+            db.collection('expenses').doc(expenseId).get().then(doc => {
+                if (doc.exists) {
+                    const expense = doc.data();
+                    if (expense.pdfUrl) { // Ensure pdfUrl exists before trying to open
+                        window.open(expense.pdfUrl, '_blank'); // Open the PDF link in a new tab
+                    } else {
+                        alert('No PDF link available for this expense.');
+                    }
+                } else {
+                    console.error("No such document!");
+                }
+            }).catch(error => {
+                console.error("Error getting document:", error);
+            });
+        }
+
+        function deleteExpense(expenseId) {
+            db.collection('expenses').doc(expenseId).delete().then(() => {
+                loadExpenses(); // Reload expenses after deletion
+            }).catch((error) => {
+                console.error("Error removing document: ", error);
+            });
+        }
+
+        document.getElementById('startDate').addEventListener('change', loadExpenses);
+        document.getElementById('endDate').addEventListener('change', loadExpenses);
+        document.getElementById('partNumberFilter').addEventListener('input', loadExpenses);
+        document.getElementById('sortBy').addEventListener('change', loadExpenses);
+
+        loadExpenses(); // Initial load
+    </script>
+</body>
+</html>
